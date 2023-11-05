@@ -126,7 +126,9 @@ paths:
                     examples: 
                       - 200
                   instance:
-                    $ref: '#/components/schemas/DetailedInstanceResponse'   
+                    oneOf:
+                      - title: Magento 2 Development Instance
+                        $ref: '#/components/schemas/Magento2BugResponse'
         '400': 
           $ref: '#/components/responses/400Response'
         '410': 
@@ -134,7 +136,7 @@ paths:
     patch:
       summary: Update a specific instance
       description: |
-        Updating instance fields will not automatically apply them to the instance. To apply them you will need to Synchroize the instance.
+        Updating instance fields will not automatically apply them to the instance. To apply them you will need to Synchroize the instance. (See `synchronize` job in [Queue Job](/#queueJob))
       tags: ["Instance"]
       operationId: updateInstanceById
       responses:
@@ -400,8 +402,412 @@ components:
       properties:
         id:
           type: integer
+          description: Uniquie ID of the instance
           examples: 
             - 123
+        bill_to_organisation_id:
+          examples: 
+            - 123
+          oneOf:
+            - type: 'null'
+              description: Billed to default organisation (The one that owns the production instance)
+            - type: integer
+              description: The ID of the organisation that will be billed for this instance.
+        client_id:
+          type: integer
+          description: Uniquie ID of the Client for the instance
+          examples: 
+            - 123
+        client_name:
+          type: array
+          description: Name of the Client for the instance
+          examples: 
+            - My Company
+        created_at:
+          type: string
+          description: Timestamp the instance was created.
+          examples: 
+            - 2023-10-31 07:59:00
+        updated_at:
+          examples: 
+            - 2023-10-31 07:59:00
+          oneOf:
+            - type: string
+              description: Timestamp the instance was updated.
+            - type: 'null'
+              description: If the instance hadn't been updated since creation.
+        custom_urls:
+          type: array
+          description: Array of custom urls.
+        deletion_protection:
+          type: integer
+          enum: [0, 1]
+          description: If 1, the instance cannot be deleted. (By MODQ or by a user)
+        description:
+          type: string
+          description: Human readable description of the instance
+          examples:
+            - My Instance
+        frontend_url:
+          description: The default fronted of the site.
+          oneOf:
+            - type: 'null'
+              description: If not specified
+            - type: string
+              description: If specificed.
+          examples:
+            - https://my.site.com/
+        gateway_endpoint:
+          type: string
+          description: gateway endpoint
+        live_id:
+          type: integer
+          description: The ID of the Live Instance this instance is a replica of.
+          examples:
+            - 123
+        merge_locked:
+          type: integer
+          enum: [0, 1]
+          description: "If work can be merged into this instance. (0: no, 1: yes)"
+        node_id:
+          type: integer
+          description: The ID of the MDOQ node the instance is running on.
+          examples:
+            - 123
+        organisation_id:
+          type: integer
+          description: The ID of the organisation that owns this instance
+          examples:
+            - 123
+        owner:
+          type: integer
+          description: The ID of the owner of the instance.
+          examples:
+            - 123
+        owner_name:
+          type: string
+          description: The name of the owner of the instance
+          examples:
+            - Joe Bloggs
+        state:
+          type: string
+          description: The current state of the instance
+          enum:
+            - Provisioning
+            - Queued to be installed
+            - Queued for component recreation
+            - Installation in progress
+            - Error
+            - Installation complete
+            - Deleting
+          examples:
+            - Installaction complete
+        state_percentage:
+          type: integer
+          minumum: 0
+          maximum: 100
+          description: Percent completion of current state
+          examples:
+            - 25
+        task_state:
+          type: string
+          description: The current task state of the instance
+          enum:
+            - development
+            - pending-regression-testing
+            - regression-testing-in-progress
+            - regression-testing-failed
+            - regression-testing-passed
+            - preparing-for-approval
+            - pending-approval
+            - client_denied
+            - pending-merge
+            - merge-in-progress
+            - merge-conflict
+            - merge-issue
+            - pending-release
+            - production
+            - pending-merge-and-tag
+            - merge-and-tag-in-progress
+            - merge-and-tag-error
+            - pending-live-release
+            - release-in-progress
+            - release-errored
+        ticket_number:
+          type: string
+          description: Unique string ID of the instance (This is also the branch name if source control is enabled)
+          examples:
+            - my-instance
+        urls:
+          type: array
+          description: |
+            This is actually an object `{"URL CODE": {url object}}`, all URL objects are the same schema.
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                description: Unique ID of the url. If this is an instance ID it will be the store code of the store the url is for.
+                examples:
+                  - default
+                  - redis-commander
+              name:
+                type: string
+                description: Human friendly description of the url.
+                examples:
+                  - Default Store View
+              secure_url:
+                type: string
+                description: The secure url for the store view
+                examples:
+                  - https://myinstance-1234.mdoq.dev/
+              unsecure_url:
+                type: string
+                description: The unsecure url for the store view. If this is for a helper, it will always be the same as `secure_url`
+                examples:
+                  - http://myinstance-1234.mdoq.dev/
+              type:
+                type: string
+                enum: 
+                  - instance
+                  - helper
+                description: Instance urls are from/for the instance, helper urls are provided by MDOQ.
+
+    Magento1InstanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/DetailedInstanceResponse'
+        - type: object
+          properties:
+            platform:
+              type: string
+              description: The platform of the instance
+              enum: ['Magento 1']
+              examples:
+                - Magento 1
+      
+    Magento1LiveConnectorResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento1InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['live_connector']
+              examples:
+                - live_connector
+      
+    Magento1BugResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento1InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['bug']
+              examples:
+                - bug
+
+    Magento1ReleaseCandidateResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento1InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['release_candidate']
+              examples:
+                - release_candidate
+          
+    Magento2InstanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/DetailedInstanceResponse'
+        - type: object
+          properties:
+            platform:
+              type: string
+              description: The platform of the instance
+              enum: ['Magento 2']
+              examples:
+                - Magento 2
+      
+    Magento2LiveConnectorResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento2InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['live_connector']
+              examples:
+                - live_connector
+      
+    Magento2BugResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento2InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['bug']
+              examples:
+                - bug
+
+    Magento2ReleaseCandidateResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento2InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['release_candidate']
+              examples:
+                - release_candidate
+
+    Magento2ProductionResponse:
+      allOf:
+        - $ref: '#/components/schemas/Magento2InstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: 
+                - production_micro
+                - production_small
+                - production_medium
+                - production_large
+                - production_xlarge
+              examples:
+                - release_candidate
+          
+    VueStorefrontFrontendInstanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/DetailedInstanceResponse'
+        - type: object
+          properties:
+            link_instance:
+              type: integer
+              description: If of the backend instance linked to this instance
+              examples:
+                - 123
+            linked_instance_description:
+              type: string
+              description: The description from the linked instance
+              examples:
+                - My VueStorefront Backend Instance
+            platform:
+              type: string
+              description: The platform of the instance
+              enum: ['Vue Storefront Frontend']
+              examples:
+                - VueS torefront Frontend
+      
+    VueStorefrontFrontendLiveConnectorResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStorefrontFrontendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['live_connector']
+              examples:
+                - live_connector
+      
+    VueStorefrontFrontendBugResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStorefrontFrontendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['bug']
+              examples:
+                - bug
+
+    VueStorefrontFrontendReleaseCandidateResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStorefrontFrontendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['release_candidate']
+              examples:
+                - release_candidate
+
+    VueStoreFrontBackendInstanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/DetailedInstanceResponse'
+        - type: object
+          properties:
+            link_instance:
+              type: integer
+              description: If of the Magento 2 instance linked to this instance
+              examples:
+                - 123
+            linked_instance_description:
+              type: string
+              description: The description from the linked instance
+              examples:
+                - My Magento Instance
+            platform:
+              type: string
+              description: The platform of the instance
+              enum: ['Vue Storefront Backend']
+              examples:
+                - Vue Storefront Backend
+      
+    VueStoreFrontBackendLiveConnectorResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['live_connector']
+              examples:
+                - live_connector
+      
+    VueStoreFrontBackendBugResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['bug']
+              examples:
+                - bug
+
+    VueStoreFrontBackendReleaseCandidateResponse:
+      allOf:
+        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - type: object
+          properties:
+            type:
+              type: string
+              description: The type of the instance
+              enum: ['release_candidate']
+              examples:
+                - release_candidate
+          
+    InstanceUpdateRequest:
+        type: object
+        properties: 
+          id:
+            type: integer
+
     
     
     # ==============================
