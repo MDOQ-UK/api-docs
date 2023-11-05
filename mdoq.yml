@@ -129,6 +129,34 @@ paths:
                     oneOf:
                       - title: Magento 2 Development Instance
                         $ref: '#/components/schemas/Magento2BugResponse'
+                      - title: Magento 2 Release Candidate Instance
+                        $ref: '#/components/schemas/Magento2LiveConnectorResponse'
+                      - title: Magento 2 Production Instance
+                        $ref: '#/components/schemas/Magento2ProductionResponse'
+                      - title: Magento 2 Live Connector Instance
+                        $ref: '#/components/schemas/Magento2LiveConnectorResponse'
+
+                      - title: Magento 1 Development Instance
+                        $ref: '#/components/schemas/Magento1BugResponse'
+                      - title: Magento 1 Release Candidate Instance
+                        $ref: '#/components/schemas/Magento1LiveConnectorResponse'
+                      - title: Magento 1 Live Connector Instance
+                        $ref: '#/components/schemas/Magento1LiveConnectorResponse'
+
+                      - title: VueStorefront Frontend Development Instance
+                        $ref: '#/components/schemas/VueStorefrontFrontendBugResponse'
+                      - title: VueStorefront Frontend Release Candidate Instance
+                        $ref: '#/components/schemas/VueStorefrontFrontendLiveConnectorResponse'
+                      - title: VueStorefront Frontend Live Connector Instance
+                        $ref: '#/components/schemas/VueStorefrontFrontendLiveConnectorResponse'
+
+                      - title: VueStorefront Backend Development Instance
+                        $ref: '#/components/schemas/VueStorefrontBackendBugResponse'
+                      - title: VueStorefront Backend Release Candidate Instance
+                        $ref: '#/components/schemas/VueStorefrontBackendLiveConnectorResponse'
+                      - title: VueStorefront Backend Live Connector Instance
+                        $ref: '#/components/schemas/VueStorefrontBackendLiveConnectorResponse'
+                        
         '400': 
           $ref: '#/components/responses/400Response'
         '410': 
@@ -744,7 +772,7 @@ components:
               examples:
                 - release_candidate
 
-    VueStoreFrontBackendInstanceResponse:
+    VueStorefrontBackendInstanceResponse:
       allOf:
         - $ref: '#/components/schemas/DetailedInstanceResponse'
         - type: object
@@ -766,9 +794,9 @@ components:
               examples:
                 - Vue Storefront Backend
       
-    VueStoreFrontBackendLiveConnectorResponse:
+    VueStorefrontBackendLiveConnectorResponse:
       allOf:
-        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - $ref: '#/components/schemas/VueStorefrontBackendInstanceResponse'
         - type: object
           properties:
             type:
@@ -778,9 +806,9 @@ components:
               examples:
                 - live_connector
       
-    VueStoreFrontBackendBugResponse:
+    VueStorefrontBackendBugResponse:
       allOf:
-        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - $ref: '#/components/schemas/VueStorefrontBackendInstanceResponse'
         - type: object
           properties:
             type:
@@ -790,9 +818,9 @@ components:
               examples:
                 - bug
 
-    VueStoreFrontBackendReleaseCandidateResponse:
+    VueStorefrontBackendReleaseCandidateResponse:
       allOf:
-        - $ref: '#/components/schemas/VueStoreFrontBackendInstanceResponse'
+        - $ref: '#/components/schemas/VueStorefrontBackendInstanceResponse'
         - type: object
           properties:
             type:
@@ -802,12 +830,14 @@ components:
               examples:
                 - release_candidate
           
-    InstanceUpdateRequest:
-        type: object
-        properties: 
-          id:
-            type: integer
+    # InstanceUpdateRequest:
+        # type: object
+        # properties: 
+        #   id:
+        #     type: integer
 
+    
+    
     
     
     # ==============================
