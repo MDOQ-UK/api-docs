@@ -1,0 +1,664 @@
+openapi: 3.1.0
+info: 
+  title: MDOQ API
+  description: This is a description of the API's provide by the MDOQ platform
+  termsOfService: https://docs.mdoq.io/hc/en-gb/articles/19648872786833
+  contact: 
+    name: Api Support
+    url: https://docs.mdoq.io
+  version: 1.0.0
+servers: 
+  - url: "https://api.mdoq.io/{version}/"
+    description: Main Api Endpoint
+    variables:
+      version: 
+        enum: ["v1"]
+        default: "v1"
+        description: Version 1
+security: 
+   - api_key: []
+tags: 
+  - name: Instance
+    description: Operations for instance entities
+  - name: Jobs
+    description: Jobs that may be ran
+paths:
+  /instance:
+    put:
+      summary: Create a new instance
+      tags: ["Instance"]
+      operationId: createInstance
+      requestBody:
+        required: true
+        description: |
+          The data to create a new instance with.  
+          **N.B** MDOQ will always create an instance with the same platform as the `instance.live_id` specified.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                instance:
+                  oneOf:
+                    - $ref: '#/components/schemas/CreateInstanceRequest'
+                    - $ref: '#/components/schemas/CreateInstanceRequestVueStorefront'
+                options:
+                  $ref: '#/components/schemas/CreateInstanceRequestOptions'
+            examples:
+              Create Development Instance:
+                value:
+                  instance:
+                    type: bug
+                    live_id: 123
+                    description: My Instance
+                    ticket_number: my-instance
+                  options:
+                    mode: dev
+              Create Release Candidate Instance:
+                value: 
+                  instance:
+                    type: release_candidate
+                    live_id: 123
+                    description: "Sprint: Q4"
+                    ticket_number: sprint/q4
+                  options:
+                    mode: prod
+              Create VueStorefront Frontend Development Instance:
+                value: 
+                  instance:
+                    type: bug
+                    live_id: 123
+                    description: My Instance
+                    ticket_number: my-instance
+                    linked_instance: 124
+                  options:
+                    mode: dev
+                  
+      responses:
+        '200': 
+          description: The newly created instance. (Some values may not be populated yet depending how far along the instance is through creating.)
+          content: 
+            application/json:
+              schema: 
+                type: object
+                properties:
+                  code: 
+                    type: integer
+                    format: int32
+                    examples: 
+                      - 200
+                  instance:
+                    $ref: '#/components/schemas/DetailedInstanceResponse'
+        '400': 
+          $ref: '#/components/responses/400Response'
+        '409': 
+          $ref: '#/components/responses/409Response'
+    
+  /instance/id/{id}:
+    summary: Load a specific instance
+    description: |
+      *N.B* some fields will not be fully populated until the instance is `state`: `Installation complete`
+    parameters:
+      - name: id
+        in: path
+        description: ID of the instance to load
+        required: true
+        schema:
+          type: integer
+          format: int32
+    get:
+      summary: Load a specific instance
+      description: |
+        *N.B* some fields will not be fully populated until the instance is `state`: `Installation complete`
+      tags: ["Instance"]
+      operationId: getInstanceById
+      responses:
+        '200': 
+          description: The instance with the ID requestd
+          content: 
+            application/json:
+              schema: 
+                type: object
+                properties:
+                  code: 
+                    type: integer
+                    format: int32
+                    examples: 
+                      - 200
+                  instance:
+                    $ref: '#/components/schemas/DetailedInstanceResponse'   
+        '400': 
+          $ref: '#/components/responses/400Response'
+        '410': 
+          $ref: '#/components/responses/410Response'
+    patch:
+      summary: Update a specific instance
+      description: |
+        Updating instance fields will not automatically apply them to the instance. To apply them you will need to Synchroize the instance.
+      tags: ["Instance"]
+      operationId: updateInstanceById
+      responses:
+        '200': 
+          description: The instance with the ID requestd
+          content: 
+            application/json:
+              schema: 
+                type: object
+                properties:
+                  code: 
+                    type: integer
+                    format: int32
+                    examples: 
+                      - 200
+                  instance:
+                    $ref: '#/components/schemas/DetailedInstanceResponse'   
+        '400': 
+          $ref: '#/components/responses/400Response'
+        '410': 
+          $ref: '#/components/responses/410Response'
+          
+  /job-queue:
+    put:
+      summary: Queue a job
+      description: |
+        Create a new queued job.  
+        Each job can have it's own expected `input_data`, check the request body schema for this information.
+      tags: ["Jobs"]
+      operationId: queueJob
+      requestBody:
+        required: true
+        description: |
+          
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queued-job:
+                  oneOf:
+                    - title: Synchronize 
+                      $ref: '#/components/schemas/QueuedJobRequestSynchronize'
+                    - title: Delete Instance 
+                      $ref: '#/components/schemas/QueuedJobRequestDeleteInstance'
+            examples:
+              Synchronize SSH:
+                value:
+                  queued-job:
+                    job_code: "synchronize"
+                    instance: 123
+                    input_data: 
+                      components:
+                        ssh: 1
+              Synchronize MySQL Only:
+                value: 
+                  queued-job:
+                    job_code: "synchronize"
+                    instance: 123
+                    input_data: 
+                      components:
+                        ssh: 1
+                      additional_arguments:
+                        instance:
+                          only_supplied_components: true
+                        mysql:
+                          perserve-var-lib: false
+              Delete instance (and keep branch):
+                value: 
+                  queued-job:
+                    job_code: "delete_instance"
+                    instance: 123
+                    input_data: 
+                      skip-branch: true
+                  
+      responses:
+        '200': 
+          description: |
+            The queued job.  
+          content: 
+            application/json:
+              schema: 
+                type: object
+                properties:
+                  code: 
+                    type: integer
+                    format: int32
+                    examples: 
+                      - 200
+                  queued-job:
+                    oneOf:
+                      - title: Base Response
+                        $ref: '#/components/schemas/DetailedQueuedJobResponse'
+                      - title: Git Status Response
+                        $ref: '#/components/schemas/DetailedQueuedJobGitStatusResponse'
+        '400': 
+          $ref: '#/components/responses/400Response'
+        '409': 
+          $ref: '#/components/responses/409Response'
+      
+components:
+  securitySchemes:
+    api_key: 
+      type: apiKey
+      name: x-mdoq-auth
+      in: header
+  parameters:
+      filter:
+        name: filter
+        in: query
+        description: 'Filters to be applied to the collection the format of the filter will change dependant on the field type<br /><b>String search:</b> <pre>filter[username]=blah</pre>Will result in all users with username like "blah"<br /><br /><b>Numeric Search:</b><pre>filter[id][from]=1&filter[id][to]=10</pre>Will result in all users with an ID => 1 && ID <= 10' 
+        required: false
+        schema:
+          type: string
+      page: 
+          name: page
+          in: query
+          description: 'The page of the collection to return<pre>page=1</pre>' 
+          required: false
+          schema:
+            type: string
+      order:
+          name: order
+          in: query
+          description: 'Order the results by a field and directiong<pre>order[field]=id&order[direction]=desc</pre>Will result in a collection being returned ordered by ID Descending' 
+          required: false
+          schema:
+            type: string
+  responses:
+    '200DeleteResponse':
+      description: Sucessfully deleted
+      content: 
+        application/json:
+          schema: 
+            type: object
+            properties:
+              code: 
+                type: integer
+                format: int32
+                examples: 
+                  - 200
+              message:
+                type: string
+                examples: 
+                  - deleted
+    '400Response':
+      description: Ivalid data supplied
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+                examples: 
+                  - 400
+              message:
+                type: string
+                examples: 
+                  - The reason why your supplied data was invalid
+    '409Response':
+      description: Entity already exists, unable to create entity because a unique field value is already taken
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+                examples: 
+                  - 409
+              message:
+                type: string
+                examples: 
+                  - Entity with ID x already exists
+    '410Response':
+      description: Unable to find entity with ID 'x'
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                format: int32
+                examples: 
+                  - 410
+              message:
+                type: string
+                examples: 
+                  - Unable to find user with ID 'x'
+  schemas:
+  
+  # ==============================
+  #     Instance
+  # ==============================
+    CreateInstanceRequest:
+      type: object
+      properties:
+        type: 
+          type: string
+          enum: 
+            - bug
+            - release_candidate
+          description: The type of instance to create
+        live_id: 
+          type: integer
+          format: int32
+          examples: 
+            - 1
+          description: The instance to use as a template (This will either be a Production instance or a Live connector)
+        description:
+          type: string
+          format: varchar255
+          examples: 
+            - My instance
+          description: Humana readable name for the instance
+        ticket_number:
+          type: string
+          examples: 
+            - my-instance
+          description: Uniquie string to identify the instance. This will be used to create/use a branch within source control if configured, therefor must only contain branch friendly characters.
+      required:
+        - type
+        - live_id
+        - description
+        - ticket_number
+    
+    CreateInstanceRequestVueStorefront:
+      allOf: 
+        - $ref: '#/components/schemas/CreateInstanceRequest'
+        - type: object
+          properties:
+            linked_instance:
+              type: integer
+              examples: 
+                - 123
+              description: The instance to point this instance at. If this is a VueStorefront Frontend instance this will need to be an VueStorefront Backend instance. If this is a VueStorefront Backend instance this will need to be a Magento instance.
+          required:
+            - linked_instance
+          
+    CreateInstanceRequestOptions:
+      type: object
+      properties:
+        mode: 
+          type: string
+          enum: 
+            - prod
+            - dev
+          examples: 
+            - prod
+          description: What mode should the instance be in when it is initially created
+        parent_branch:
+          type: string
+          examples: 
+            - rc/big-dev
+          description: The branch to create the branch for this instance from. (The will only be used if the branch with name "instance.ticket_number" doesn't already exist)
+    
+    DetailedInstanceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          examples: 
+            - 123
+    
+    
+    # ==============================
+    #     Queued Jobs
+    # ==============================
+    
+    QueuedJobRequestBase:
+      type: object
+      properties:
+        job_code: 
+          type: string
+          examples: 
+            - synchronize
+          description: The job to be ran
+        input_data:
+          type: object
+          description: Options for the job
+      required:
+        - job_code
+    
+    QueuedJobRequestSynchronize:
+      allOf: 
+        - $ref: '#/components/schemas/QueuedJobRequestBase'
+        - type: object
+          properties:
+            job_code:
+              type: string
+              examples: 
+                - synchronize
+              enum:
+                - synchronize
+            input_data:
+              properties:
+                components:
+                  type: object
+                  description: Which components you would like to synchronize. (The available components will change depending on the platform of the instance)
+                  properties:
+                    code:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    mysql:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    site-nginx:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    php-fpm:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    cron:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    environment-changes:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    git:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    helper-scripts:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    node-modules:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    nodejs:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    post-rollup-actions:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    redis:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    sftp:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                    ssh:
+                      type: integer
+                      enum: [0, 1]
+                      default: 0
+                additional_arguments:
+                  type: object
+                  properties:
+                    instance:
+                      type: object
+                      description: Instance wide options for the job
+                      properties:
+                        only_supplied_components:
+                          type: boolean
+                          default: false
+                          description: If MDOQ should also recreate dependant components.
+                    mysql:
+                      type: object
+                      description: Options for the MySQL component. (Only used if MySQL gets recreated)
+                      properties:
+                        preserve-var-lib:
+                          type: boolean
+                          default: false
+                          description: If the data directory of MySQL should be preserved.
+              required:
+                - components
+          required:
+            - linked_instance
+    
+    QueuedJobRequestDeleteInstance:
+      type: object
+      properties:
+        mode: 
+          type: string
+          enum: 
+            - prod
+            - dev
+          examples:
+            - prod
+          description: What mode should the instance be in when it is initially created
+        parent_branch:
+          type: string
+          examples: 
+            - rc/big-dev
+          description: The branch to create the branch for this instance from. (The will only be used if the branch with name "instance.ticket_number" doesn't already exist)
+          
+    DetailedQueuedJobResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          examples: 
+            - 123
+          description: ID of the job
+        owner:
+          type: integer
+          examples: 
+            - 123
+          description: ID of the user who started the Job
+        instance:
+          type: integer
+          examples: 
+            - 123
+          description: ID of the instance the job is ran for.
+        node:
+          types: 
+            - integer
+            - 'null'
+          examples: 
+            - 234
+          description: ID of the MDOQ Node this job ran on. (This will be null until queued)
+        job_code:
+          type: string
+          examples: 
+            - git-status
+          description: The job code of the job
+        created_at:
+          type: string
+          examples: 
+            - 2023-10-31 07:58:16
+          format: YY:MM:DD H:i:s
+          description: The timestamp the job was initially requested.
+        queued_at:
+          description: The timestamp the job was queued.
+          examples: 
+            - 2023-10-31 07:59:00
+          oneOf:
+            - type: 'null'
+              description: Until the job is queued
+            - type: string
+              format: YY:MM:DD H:i:s
+        started_at:
+          description: The timestamp the job was started.
+          examples: 
+            - 2023-10-31 07:59:00
+          oneOf:
+            - type: 'null'
+              description: Until the job has started
+            - type: string
+              format: YY:MM:DD H:i:s
+        finished_at:
+          description: The timestamp the job finished running.
+          examples: 
+            - 2023-10-31 07:59:00
+          oneOf:
+            - type: 'null'
+              description: Until the job has finised running
+            - type: string
+              format: YY:MM:DD H:i:s
+        status:
+          type: string
+          enum:
+            - scheduled
+            - queued
+            - running
+            - success
+            - fail
+          examples:
+            - success
+          description: The current status of the job
+        input_data:
+          type: object
+          description: The input arguments the job recieved
+        output_data:
+          type: string
+          description: The output of the job  
+
+    DetailedQueuedJobGitStatusResponse:
+      allOf: 
+        - $ref: '#/components/schemas/DetailedQueuedJobResponse'
+        - type: object
+          properties:
+            output_data:
+              type: string
+              description: |
+                A url encoded and json encoded string, representing an object.   
+                ```
+                {\u0022files\u0022:{\u0022app\\\/etc\\\/config.php\u0022:\u0022modified\u0022},\u0022total_files\u0022:1,\u0022more_files\u0022:false}
+                ```  
+                - `files` will contain an object (`filepath` => `status`) of each file identified. 
+                - `total_files` to count of files identified
+                - `more_files` a boolean to identify if there are more file that have changed that aren't displayed here.
+
+      
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+    
+          
